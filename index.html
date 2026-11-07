@@ -26,6 +26,7 @@
 </div>
 <script>
     const PASSWORD_SHA256 = "ae10109a31cd79223a1c74bbcbdc44b43a869a8ca0060d901fa01f90b32f0552";
+    let loading = false;
 
     async function sha256Hex(text) {
         const data = new TextEncoder().encode(text);
@@ -33,23 +34,47 @@
         return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
     }
 
-    document.getElementById("gate-form").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const value = document.getElementById("password").value;
-        const hash = await sha256Hex(value);
-        if (hash !== PASSWORD_SHA256) {
-            document.getElementById("error").textContent = "Wrong password";
-            return;
-        }
+    function showGate(message) {
+        document.getElementById("gate").style.display = "flex";
+        if (message) document.getElementById("error").textContent = message;
+    }
+
+    function unlock() {
+        if (loading) return;
+        loading = true;
         document.getElementById("gate").style.display = "none";
+        // Drop ?pw=... / #pw=... from the address bar after use.
+        history.replaceState(null, "", location.pathname);
         const script = document.createElement("script");
         script.src = "composeApp.js";
         script.onerror = () => {
-            document.getElementById("gate").style.display = "flex";
-            document.getElementById("error").textContent = "Failed to load the app";
+            loading = false;
+            showGate("Failed to load the app");
         };
         document.body.appendChild(script);
+    }
+
+    async function attempt(value, fromUrl) {
+        const hash = await sha256Hex(value);
+        if (hash !== PASSWORD_SHA256) {
+            showGate(fromUrl ? "Wrong password in URL" : "Wrong password");
+            return;
+        }
+        unlock();
+    }
+
+    document.getElementById("gate-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        attempt(document.getElementById("password").value, false);
     });
+
+    // Supported: ?pw=... and #pw=...  (the fragment is not sent to the server)
+    const fromHash = new URLSearchParams(location.hash.replace(/^#/, "")).get("pw");
+    const fromQuery = new URLSearchParams(location.search).get("pw");
+    const urlPassword = fromHash || fromQuery;
+    if (urlPassword) {
+        attempt(urlPassword, true);
+    }
 </script>
 </body>
 </html>
