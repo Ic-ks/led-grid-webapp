@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>led-grid</title>
+    <link type="text/css" rel="stylesheet" href="styles.css">
+    <style>
+        html, body { height: 100%; margin: 0; background: #11161D; color: #D8E1EA; font-family: system-ui, sans-serif; }
+        #gate { display: flex; height: 100%; align-items: center; justify-content: center; }
+        .card { padding: 28px 32px; border-radius: 16px; background: #1A2430; min-width: 280px; }
+        h1 { margin: 0 0 18px; font-size: 20px; }
+        input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #4D647A; background: #223142; color: #fff; font-size: 15px; }
+        button { margin-top: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: #9BD3FF; color: #11161D; font-size: 15px; font-weight: 600; cursor: pointer; }
+        #error { min-height: 18px; margin: 10px 0 0; color: #FF8080; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div id="gate">
+    <form class="card" id="gate-form">
+        <h1>led-grid</h1>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" autofocus>
+        <button type="submit">Open</button>
+        <p id="error"></p>
+    </form>
+</div>
+<script>
+    const PASSWORD_SHA256 = "ae10109a31cd79223a1c74bbcbdc44b43a869a8ca0060d901fa01f90b32f0552";
+
+    async function sha256Hex(text) {
+        const data = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    document.getElementById("gate-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const value = document.getElementById("password").value;
+        const hash = await sha256Hex(value);
+        if (hash !== PASSWORD_SHA256) {
+            document.getElementById("error").textContent = "Wrong password";
+            return;
+        }
+        document.getElementById("gate").style.display = "none";
+        const script = document.createElement("script");
+        script.src = "composeApp.js";
+        script.onerror = () => {
+            document.getElementById("gate").style.display = "flex";
+            document.getElementById("error").textContent = "Failed to load the app";
+        };
+        document.body.appendChild(script);
+    });
+</script>
+</body>
+</html>
